@@ -18,6 +18,7 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  double uploadProgress = 0;
   String? profile, name, email;
 
   final ImagePicker _picker = ImagePicker();
@@ -39,13 +40,25 @@ class _ProfileState extends State<Profile> {
           FirebaseStorage.instance.ref().child('Images').child(addId);
       final UploadTask uploadTask = firestorageRef.putFile(selectedImage!);
 
+      // Listen to the upload task to track progress and update the UI
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        setState(() {
+          double progress =
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          // Update a state variable to reflect progress
+          uploadProgress = progress;
+        });
+      });
+      // Wait for upload to complete
+      TaskSnapshot snapshot = await uploadTask;
       var downloadUrl = await (await uploadTask).ref.getDownloadURL();
 
       await SharedePrefHelper().saveUserProfile(downloadUrl);
       setState(() {
-      profile = downloadUrl; // Update the profile image URL immediately
-      selectedImage = null;  // Clear the selected image after upload
-    });
+        profile = downloadUrl; // Update the profile image URL immediately
+        selectedImage = null; // Clear the selected image after upload
+        uploadProgress = 0; // Reset the progress
+      });
     }
   }
 
@@ -77,16 +90,13 @@ class _ProfileState extends State<Profile> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(
-                    height: 20,
-                  ),
+                  const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Wrap the Stack in a Container with a defined size
                       Container(
-                        width: 150, // Adjust the size as needed
-                        height: 150, // Adjust the size as needed
+                        width: 150,
+                        height: 150,
                         child: Stack(
                           children: [
                             Center(
@@ -113,264 +123,116 @@ class _ProfileState extends State<Profile> {
                               ),
                             ),
                             Positioned(
-                              bottom: 3, // Position at the bottom
-                              right: 10, // Position at the right
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors
-                                      .yellow, // Background color for the icon
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 5,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: selectedImage == null
-                                    ? GestureDetector(
-                                        onTap: () {
-                                          getImage();
-                                        },
+                              bottom: 3,
+                              right: 10,
+                              child: uploadProgress > 0 && uploadProgress < 100
+                                  ? CircularProgressIndicator(
+                                      value: uploadProgress / 100)
+                                  : GestureDetector(
+                                      onTap: getImage,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                            color: Colors.yellow,
+                                            borderRadius:
+                                                BorderRadius.circular(20)),
                                         child: const Icon(
                                           Icons.edit,
                                           color: Colors.black,
                                         ),
-                                      )
-                                    : Image.file(selectedImage!),
-                              ),
+                                      ),
+                                    ),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: Colors.grey.withOpacity(0.5))),
-                    child: Material(
-                      elevation: 3,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(children: [
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          const Icon(Icons.person),
-                          const SizedBox(
-                            width: 20,
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Name',
-                                style: AppFont.semiBoldTextStyle(),
-                              ),
-                              Text(
-                                name!,
-                                style: AppFont.lightTextStyle(),
-                              ),
-                            ],
-                          )
-                        ]),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: Colors.grey.withOpacity(0.5))),
-                    child: Material(
-                      elevation: 3,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(children: [
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          const Icon(Icons.email),
-                          const SizedBox(
-                            width: 20,
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Email',
-                                style: AppFont.semiBoldTextStyle(),
-                              ),
-                              Text(
-                                email!,
-                                style: AppFont.lightTextStyle(),
-                              ),
-                            ],
-                          )
-                        ]),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: Colors.grey.withOpacity(0.5))),
-                    child: Material(
-                      elevation: 3,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(children: [
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          const Icon(Icons.description),
-                          const SizedBox(
-                            width: 20,
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Terms And Conditions',
-                                style: AppFont.semiBoldTextStyle(),
-                              ),
-                            ],
-                          )
-                        ]),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      FirebaseMethods().deleteUser();
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border:
-                              Border.all(color: Colors.grey.withOpacity(0.5))),
-                      child: Material(
-                        elevation: 3,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(children: [
-                            const SizedBox(
-                              width: 10,
-                            ),
-                            const Icon(Icons.delete),
-                            const SizedBox(
-                              width: 20,
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Delete Account',
-                                  style: AppFont.semiBoldTextStyle(),
-                                ),
-                              ],
-                            )
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      FirebaseMethods().signOut();
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border:
-                              Border.all(color: Colors.grey.withOpacity(0.5))),
-                      child: Material(
-                        elevation: 3,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(children: [
-                            const SizedBox(
-                              width: 10,
-                            ),
-                            const Icon(Icons.logout),
-                            const SizedBox(
-                              width: 20,
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Log Out',
-                                  style: AppFont.semiBoldTextStyle(),
-                                ),
-                              ],
-                            )
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 20),
+                  profileDetailsSection(
+                      Icons.person, "Name", name ?? "Loading..."),
+                  const SizedBox(height: 20),
+                  profileDetailsSection(
+                      Icons.email, "Email", email ?? "Loading..."),
+                  const SizedBox(height: 20),
+                  profileDetailsSection(
+                      Icons.description, "Terms And Conditions", "View"),
+                  const SizedBox(height: 20),
+                  profileActionButton(Icons.delete, "Delete Account",
+                      FirebaseMethods().deleteUser),
+                  const SizedBox(height: 20),
+                  profileActionButton(
+                      Icons.logout, "Log Out", FirebaseMethods().signOut),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget profileDetailsSection(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.5)),
+      ),
+      child: Material(
+        elevation: 3,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 10),
+              Icon(icon),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: AppFont.semiBoldTextStyle()),
+                  Text(value, style: AppFont.lightTextStyle()),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget profileActionButton(IconData icon, String label, Function action) {
+    return GestureDetector(
+      onTap: () => action(),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.withOpacity(0.5)),
+        ),
+        child: Material(
+          elevation: 3,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 10),
+                Icon(icon),
+                const SizedBox(width: 20),
+                Text(label, style: AppFont.semiBoldTextStyle()),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
